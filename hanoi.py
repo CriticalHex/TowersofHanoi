@@ -49,8 +49,8 @@ def reset(screen: pygame.Surface, disk_count: int):
     towers.append(Tower(pygame.Vector2(center.x - 50, y)))
     towers.append(Tower(pygame.Vector2(center.x + 450, y)))
 
-    for i in range(disk_count):
-        scale = abs((i - (disk_count + 1)) * 50)
+    for i in range(disk_count, 0, -1):
+        scale = (i + 1) * 50
         set_disk(Disk(i, pygame.Rect(0, 0, scale, 50)), towers[0])
     return towers
 
@@ -62,7 +62,7 @@ def get_tower(edit: Disk, towers: list[Tower]):
 
 
 def grab_disk(disk: None | Disk, tower: None | Tower):
-    if disk is not None and disk == max(tower.disks, key=lambda x: x.value):
+    if disk is not None and disk == min(tower.disks, key=lambda x: x.value):
         return disk
 
 
@@ -78,6 +78,10 @@ def set_disk(edit: Disk, tower: Tower, start_tower: None | Tower = None):
     edit.last = edit.rect.center
 
 
+def solve(disk_count):
+    pass
+
+
 def main():
     screen = pygame.display.set_mode((1920, 1080))
     pygame.display.set_caption("Towers of Hanoi")
@@ -85,7 +89,7 @@ def main():
 
     edit: Disk = None
 
-    disk_count = 10
+    disk_count = 3
 
     towers: list[Tower] = reset(screen, disk_count)
 
@@ -113,7 +117,7 @@ def main():
                 if tower is not None:
                     if (
                         len(tower.disks) == 0
-                        or edit.value > max(tower.disks, key=lambda x: x.value).value
+                        or edit.value < min(tower.disks, key=lambda x: x.value).value
                     ):
                         set_disk(edit, tower, start_tower)
                     else:
