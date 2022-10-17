@@ -87,9 +87,10 @@ def stat_rect(screen: pygame.Surface, color: tuple[int, int, int]):
     pygame.draw.rect(screen, color, (0, 0, 50, 50))
 
 
-def set_disk(edit, start_tower, tower):
+def set_disk(edit: Disk, start_tower: Tower, tower: Tower):
     start_tower.disks.remove(edit)
     tower.disks.append(edit)
+    edit.start_pos = edit.rect.topleft
 
 
 if __name__ == "__main__":
@@ -132,6 +133,8 @@ if __name__ == "__main__":
                         or edit.value > max(tower.disks, key=lambda x: x.value).value
                     ):
                         set_disk(edit, start_tower, tower)
+                    else:
+                        edit.rect.topleft = edit.start_pos
                 edit = None
 
         if edit is not None:
