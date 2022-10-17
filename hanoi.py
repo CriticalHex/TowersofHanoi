@@ -12,13 +12,11 @@ WHITE = (255, 255, 255)
 
 class Tower:
     def __init__(self, pos: pygame.Vector2) -> None:
-        self.pos = pos
-        self.w = 10
-        self.h = 800
+        self.rect = pygame.rect.Rect(*pos, 10, 800)
         self.disks: list[Disk] = []
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (255, 255, 122), (*self.pos, self.w, self.h))
+        pygame.draw.rect(screen, (255, 255, 122), self.rect)
 
 
 class Disk:
@@ -34,15 +32,82 @@ class Disk:
         pygame.draw.rect(screen, self.color, self.rect)
 
 
-def get_hovering(mouse_pos, towers: list[Tower]):
+def point_collision(rect: pygame.Rect, point: pygame.Vector2):
+    return (
+        point.x >= rect.x
+        and point.x <= rect.x + rect.width
+        and point.y >= rect.y
+        and point.y <= rect.y + rect.height
+    )
+
+
+def rect_collision(rect1: pygame.Rect, rect2: pygame.Rect):
+    return (
+        point_collision(rect1, pygame.Vector2(rect2.topleft))
+        or point_collision(rect1, pygame.Vector2(rect2.topright))
+        or point_collision(rect1, pygame.Vector2(rect2.bottomleft))
+        or point_collision(rect1, pygame.Vector2(rect2.bottomright))
+        or point_collision(rect2, pygame.Vector2(rect1.topleft))
+        or point_collision(rect2, pygame.Vector2(rect1.topright))
+        or point_collision(rect2, pygame.Vector2(rect1.bottomleft))
+        or point_collision(rect2, pygame.Vector2(rect1.bottomright))
+        or (
+            (
+                rect1.top <= rect2.top
+                and rect1.bottom >= rect2.bottom
+                and rect1.left <= rect2.left
+                and rect1.right >= rect2.right
+            )
+            or (
+                rect2.top <= rect1.top
+                and rect2.bottom >= rect1.bottom
+                and rect2.left <= rect1.left
+                and rect2.right >= rect1.right
+            )
+            or (
+                rect1.top <= rect2.top
+                and rect1.bottom >= rect2.bottom
+                and rect1.left >= rect2.left
+                and rect1.right <= rect2.right
+            )
+            or (
+                rect2.top <= rect1.top
+                and rect2.bottom >= rect1.bottom
+                and rect2.left >= rect1.left
+                and rect2.right <= rect1.right
+            )
+            or (
+                rect1.top >= rect2.top
+                and rect1.bottom <= rect2.bottom
+                and rect1.left <= rect2.left
+                and rect1.right >= rect2.right
+            )
+            or (
+                rect2.top >= rect1.top
+                and rect2.bottom <= rect1.bottom
+                and rect2.left <= rect1.left
+                and rect2.right >= rect1.right
+            )
+            or (
+                rect1.top >= rect2.top
+                and rect1.bottom <= rect2.bottom
+                and rect1.left >= rect2.left
+                and rect1.right <= rect2.right
+            )
+            or (
+                rect2.top >= rect1.top
+                and rect2.bottom <= rect1.bottom
+                and rect2.left >= rect1.left
+                and rect2.right <= rect1.right
+            )
+        )
+    )
+
+
+def get_hovering(mouse_pos: pygame.Vector2, towers: list[Tower]):
     for t in towers:
         for d in t.disks:
-            if (
-                mouse_pos[0] >= d.rect.x
-                and mouse_pos[0] <= d.rect.x + d.rect.width
-                and mouse_pos[1] >= d.rect.y
-                and mouse_pos[1] <= d.rect.y + d.rect.height
-            ):
+            if point_collision(d.rect, mouse_pos):
                 return d, t
     return None
 
@@ -72,13 +137,35 @@ def reset(screen: pygame.Surface, disk_count: int):
                 i,
                 rc(),
                 pygame.Vector2(
-                    (t1.pos.x + (t1.w / 2)) - (size_scale / 2),
+                    (t1.rect.x + (t1.rect.w / 2)) - (size_scale / 2),
                     screen.get_height() - pos_scale,
                 ),
                 size_scale,
             )
         )
     return towers
+
+
+def get_tower(edit: Disk, mouse_pos: pygame.Vector2, towers: list[Tower]):
+    pass
+
+
+def grab_disk(disk: None | Disk, tower: None | Tower):
+    if (
+        disk is not None
+        and edit is None
+        and disk == max(tower.disks, key=lambda x: x.value)
+    ):
+        return disk
+
+
+def move_disk(edit: None | Disk, tower: None | Tower, mouse_pos: pygame.Vector2):
+    if edit is not None:
+        pass
+
+
+def stat_rect(screen: pygame.Surface, color: tuple[int, int, int]):
+    pygame.draw.rect(screen, color, (0, 0, 50, 50))
 
 
 if __name__ == "__main__":
@@ -97,10 +184,10 @@ if __name__ == "__main__":
         for event in pygame.event.get():
             mouse_pos = pygame.Vector2(*pygame.mouse.get_pos())
             if (x := get_hovering(mouse_pos, towers)) is not None:
-                h_disk, h_tower = x
+                disk, start_tower = x
             else:
-                h_disk = None
-                h_tower = None
+                disk = None
+                start_tower = None
             if event.type == pygame.QUIT:
                 running = False
             keys = pygame.key.get_pressed()
@@ -108,13 +195,10 @@ if __name__ == "__main__":
                 running = False
             if keys[pygame.K_LSHIFT]:
                 towers = reset(screen, disk_count)
+
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if (
-                    h_disk is not None
-                    and edit is None
-                    and h_disk == max(h_tower.disks, key=lambda x: x.value)
-                ):
-                    edit = h_disk
+                edit = grab_disk(disk, start_tower)
+
             if event.type == pygame.MOUSEBUTTONUP:
                 edit = None
 
@@ -128,8 +212,15 @@ if __name__ == "__main__":
             for d in t.disks:
                 d.draw(screen)
 
-        if h_disk is not None:
-            highlight(screen, h_disk)
+        if disk is not None:
+            highlight(screen, disk)
+
+        if edit is not None:
+            if start_tower is not None:
+                print(start_tower.rect.top)
+                stat_rect(screen, RED)
+                if rect_collision(edit.rect, start_tower.rect):
+                    stat_rect(screen, GREEN)
 
         pygame.display.flip()
     pygame.quit()
