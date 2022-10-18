@@ -7,12 +7,17 @@ WHITE = (255, 255, 255)
 
 
 class Tower:
-    def __init__(self, pos: pygame.Vector2) -> None:
+    def __init__(self, pos: pygame.Vector2, index: int):
         self.rect = pygame.rect.Rect(*pos, 10, 600)
         self.disks: list[Disk] = []
+        self.index = index
 
     def draw(self, screen):
         pygame.draw.rect(screen, (255, 255, 122), self.rect)
+
+    def debug(self):
+        for d in self.disks:
+            print(d.value)
 
 
 class Disk:
@@ -45,9 +50,9 @@ def reset(screen: pygame.Surface, disk_count: int):
     center = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
     y = screen.get_height() - 600
     towers: list[Tower] = []
-    towers.append(Tower(pygame.Vector2(center.x - 500, y)))
-    towers.append(Tower(pygame.Vector2(center.x - 50, y)))
-    towers.append(Tower(pygame.Vector2(center.x + 450, y)))
+    towers.append(Tower(pygame.Vector2(center.x - 505, y), 0))
+    towers.append(Tower(pygame.Vector2(center.x - 5, y), 1))
+    towers.append(Tower(pygame.Vector2(center.x + 495, y), 2))
 
     for i in range(disk_count, 0, -1):
         scale = (i + 1) * 50
@@ -78,8 +83,94 @@ def set_disk(edit: Disk, tower: Tower, start_tower: None | Tower = None):
     edit.last = edit.rect.center
 
 
-def solve(disk_count):
-    pass
+def find_move(test_disk: Disk, start_tower: Tower, towers: list[Tower]):
+    for t in towers:
+        if test_move(test_disk, t, start_tower):
+            return True
+    return False
+
+
+def test_move(test_disk: Disk, tower: Tower, start_tower: Tower):
+    if (
+        len(tower.disks) == 0
+        or test_disk.value < min(tower.disks, key=lambda x: x.value).value
+    ):
+        set_disk(test_disk, tower, start_tower)
+        return True
+    return False
+
+
+def debug(disk: Disk, start_index: int, move_index: int):
+    resolve_index = [0, 1, 2]
+    if move_index < 0:
+        move_index = resolve_index[move_index]
+    print(f"Disk {disk.value} moved from tower {start_index} to tower {move_index}.")
+
+
+def move_one(towers: list[Tower], left: bool):
+    for i, t in enumerate(towers):
+        for d in t.disks:
+            if d.value == 1:
+                if left:
+                    set_disk(d, towers[(i - 1) % 3], t)
+                    # debug(d, i, (i - 1) % 3)
+                else:
+                    set_disk(d, towers[(i + 1) % 3], t)
+                    # debug(d, i, (i % 3))
+                return
+
+
+def move_two(towers: list[Tower]):
+    for t in towers:
+        for d in t.disks:
+            if d.value == 2:
+                find_move(d, t, towers)
+                return
+
+
+def move_three(towers: list[Tower]):
+    for t in towers:
+        for d in t.disks:
+            if d.value == 3:
+                find_move(d, t, towers)
+                return
+
+
+def move_big(towers: list[Tower]):
+    for t in towers:
+        for d in t.disks:
+            if d.value > 3 and d == min(t.disks, key=lambda x: x.value):
+                if find_move(d, t, towers):
+                    return
+
+
+def solve(towers: list[Tower], disk_count: int):
+    if not len(towers[2].disks) == disk_count:
+        if disk_count % 2 == 1:
+            move_one(towers, True)
+            move_two(towers)
+            move_one(towers, True)
+            move_three(towers)
+            move_one(towers, True)
+            move_two(towers)
+            move_one(towers, True)
+            move_big(towers)
+            solve(towers, disk_count)
+
+
+def print_towers(towers: list[Tower]):
+    for i, t in enumerate(towers):
+        print(f"tower {i} has:")
+        t.debug()
+
+
+def win(screen: pygame.Surface, tower: Tower, disk_count: int):
+    if len(tower.disks) == disk_count:
+        pygame.draw.circle(
+            screen, (0, 255, 0), (screen.get_width() / 2, screen.get_height() / 2), 250
+        )
+        return True
+    return False
 
 
 def main():
@@ -89,7 +180,7 @@ def main():
 
     edit: Disk = None
 
-    disk_count = 3
+    disk_count = 5
 
     towers: list[Tower] = reset(screen, disk_count)
 
@@ -108,6 +199,8 @@ def main():
                 running = False
             if keys[pygame.K_LSHIFT]:
                 towers = reset(screen, disk_count)
+            if keys[pygame.K_SPACE]:
+                solve(towers, disk_count)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 edit = grab_disk(disk, start_tower)
@@ -115,13 +208,7 @@ def main():
             if event.type == pygame.MOUSEBUTTONUP and edit is not None:
                 tower = get_tower(edit, towers)
                 if tower is not None:
-                    if (
-                        len(tower.disks) == 0
-                        or edit.value < min(tower.disks, key=lambda x: x.value).value
-                    ):
-                        set_disk(edit, tower, start_tower)
-                    else:
-                        edit.rect.center = edit.last
+                    test_move(edit, tower, start_tower)
                 else:
                     edit.rect.center = edit.last
                 edit = None
@@ -138,6 +225,8 @@ def main():
 
         if disk is not None:
             highlight(screen, disk.rect)
+
+        win(screen, towers[2], disk_count)
 
         pygame.display.flip()
     pygame.quit()
