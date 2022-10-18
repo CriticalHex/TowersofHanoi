@@ -174,6 +174,7 @@ def win(screen: pygame.Surface, tower: Tower, disk_count: int):
 
 
 def main():
+    clock = pygame.time.Clock()
     screen = pygame.display.set_mode((1920, 1080))
     pygame.display.set_caption("Towers of Hanoi")
     running = True
@@ -216,6 +217,7 @@ def main():
         if edit is not None:
             edit.rect.center = mouse_pos
 
+        clock.tick(60)
         screen.fill((0, 0, 0))
 
         for t in towers:
