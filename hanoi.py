@@ -1,3 +1,4 @@
+from dis import dis
 import pygame
 import random
 
@@ -144,24 +145,17 @@ def move_big(towers: list[Tower]):
                     return
 
 
-def solve(towers: list[Tower], disk_count: int):
-    if not len(towers[2].disks) == disk_count:
-        if disk_count % 2 == 1:
-            move_one(towers, True)
-            move_two(towers)
-            move_one(towers, True)
-            move_three(towers)
-            move_one(towers, True)
-            move_two(towers)
-            move_one(towers, True)
-            move_big(towers)
-            solve(towers, disk_count)
-
-
 def print_towers(towers: list[Tower]):
     for i, t in enumerate(towers):
         print(f"tower {i} has:")
         t.debug()
+
+
+def solve(disk_count: int, towers: list[Tower], move: tuple(int, int)):
+    solve(disk_count, towers, move)
+    if towers[0].disks[0].value == disk_count:
+        set_disk(towers[0].disks[0], towers[2], towers[0])
+    
 
 
 def win(screen: pygame.Surface, tower: Tower, disk_count: int):
@@ -181,11 +175,14 @@ def main():
 
     edit: Disk = None
 
-    disk_count = 5
+    disk_count = 20
+
+    solve = False
 
     towers: list[Tower] = reset(screen, disk_count)
 
     while running:
+        # clock.tick(60)
         for event in pygame.event.get():
             mouse_pos = pygame.Vector2(*pygame.mouse.get_pos())
             if (x := get_hovering(mouse_pos, towers)) is not None:
@@ -201,7 +198,7 @@ def main():
             if keys[pygame.K_LSHIFT]:
                 towers = reset(screen, disk_count)
             if keys[pygame.K_SPACE]:
-                solve(towers, disk_count)
+                solve = True
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 edit = grab_disk(disk, start_tower)
@@ -217,8 +214,28 @@ def main():
         if edit is not None:
             edit.rect.center = mouse_pos
 
-        clock.tick(60)
         screen.fill((0, 0, 0))
+
+        if solve:
+            if not len(towers[2].disks) == disk_count:
+                if disk_count % 2 == 1:
+                    move_one(towers, True)
+                    move_two(towers)
+                    move_one(towers, True)
+                    move_three(towers)
+                    move_one(towers, True)
+                    move_two(towers)
+                    move_one(towers, True)
+                    move_big(towers)
+                else:
+                    move_one(towers, False)
+                    move_two(towers)
+                    move_one(towers, False)
+                    move_three(towers)
+                    move_one(towers, False)
+                    move_two(towers)
+                    move_one(towers, False)
+                    move_big(towers)
 
         for t in towers:
             t.draw(screen)
